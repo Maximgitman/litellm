@@ -460,3 +460,47 @@ def test_streaming_chunks_have_stable_ids():
     response_two = iterator.chunk_parser(chunk=second_chunk)
 
     assert response_one.id == response_two.id == iterator.response_id
+
+
+def test_thinking_blocks_only_in_provider_fields():
+    """Test that thinking_blocks is only in provider_specific_fields, not as top-level field"""
+    import litellm
+    from litellm.types.llms.openai import ChatCompletionThinkingBlock
+
+    # Create a message with thinking blocks using the public API
+    thinking_blocks = [
+        ChatCompletionThinkingBlock(
+            type="thinking",
+            thinking="Let me think about this...",
+        )
+    ]
+
+    # Create message the way Anthropic transformation does
+    message = litellm.Message(
+        content="Here is my response",
+        role="assistant",
+        provider_specific_fields={
+            "citations": None,
+            "thinking_blocks": thinking_blocks,
+        },
+        reasoning_content="Let me think about this...",
+    )
+
+    # Verify thinking_blocks is NOT a top-level attribute (or is None if it exists)
+    # After our fix, the Message constructor should not set thinking_blocks as top-level
+    assert not hasattr(message, "thinking_blocks") or message.thinking_blocks is None, \
+        f"thinking_blocks should not be a top-level field, got: {getattr(message, 'thinking_blocks', 'NO ATTR')}"
+
+    # Verify thinking_blocks exists in provider_specific_fields
+    assert message.provider_specific_fields is not None, \
+        "provider_specific_fields should exist"
+    assert "thinking_blocks" in message.provider_specific_fields, \
+        "thinking_blocks should be in provider_specific_fields"
+    assert message.provider_specific_fields["thinking_blocks"] == thinking_blocks, \
+        "thinking_blocks in provider_specific_fields should match input"
+
+    # Verify reasoning_content exists as standard field
+    assert message.reasoning_content is not None, \
+        "reasoning_content should exist as standard OpenAI field"
+    assert message.reasoning_content == "Let me think about this...", \
+        "reasoning_content should contain the thinking text"
