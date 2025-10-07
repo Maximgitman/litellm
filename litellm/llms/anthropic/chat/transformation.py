@@ -962,7 +962,6 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
                     "citations": citations,
                     "thinking_blocks": thinking_blocks,
                 },
-                thinking_blocks=thinking_blocks,
                 reasoning_content=reasoning_content,
             )
 
